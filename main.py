@@ -3,8 +3,10 @@ import requests
 import json
 import random
 from typing import Dict, List, Tuple
+import google.generativeai as genai
+import json
 
-# Configure Streamlit page
+
 st.set_page_config(
     page_title="Excel Mock Interviewer",
     page_icon="📊",
@@ -13,18 +15,14 @@ st.set_page_config(
 )
 
 
-# Excel Mock Interviewer - Gemini API-powered application
-import google.generativeai as genai
-import json
 
-# Google Gemini API configuration
-GEMINI_API_KEY = "AIzaSyBGy0vWImHYmwggV56bjzZIKVznWNpJXn8"
+GEMINI_API_KEY = "YOUR_API_KEY"
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 
 
-# Fallback questions in case API fails
+
 FALLBACK_QUESTIONS = [
     "How would you use VLOOKUP to find the price of a product based on its ID, and what are the key parameters you need to consider?",
     "Explain the difference between VLOOKUP and INDEX/MATCH functions. When would you use each one?",
@@ -43,7 +41,7 @@ FALLBACK_QUESTIONS = [
     "How would you create a macro to automate repetitive tasks in Excel?"
 ]
 
-# Excel topics for question generation
+
 EXCEL_TOPICS = [
     "VLOOKUP and HLOOKUP functions",
     "INDEX and MATCH functions",
@@ -77,14 +75,14 @@ def call_gemini_api(prompt: str, max_length: int = 500) -> str:
         return response.text.strip()
     
     except Exception as e:
-        # Don't show error message to user, just return None to trigger fallback
+        
         return None
 
 def generate_excel_question(question_number: int) -> str:
     """
     Generate an Excel interview question with progressive difficulty using Google Gemini.
     """
-    # Define difficulty levels and topics for each question
+ 
     difficulty_levels = {
         1: {
             "level": "Basic",
@@ -139,12 +137,12 @@ def generate_excel_question(question_number: int) -> str:
     
     Generate a {current_level['level']} level question about {topic}:"""
     
-    # Try to get AI-generated question
+    
     ai_question = call_gemini_api(prompt, max_length=200)
     
-    # If API fails or limit is exhausted, use fallback question based on difficulty level
+  
     if ai_question is None or "Error" in ai_question:
-        # Don't show warning message, just use fallback question
+    
         return get_fallback_question_by_difficulty(question_number)
     
     return ai_question
@@ -210,9 +208,9 @@ def evaluate_answer(question: str, answer: str) -> Tuple[int, str]:
     
     response = call_gemini_api(prompt, max_length=150)
     
-    # If API fails or limit is exhausted, provide basic evaluation
+ 
     if response is None or "Error" in response:
-        # Simple keyword-based evaluation as fallback
+  
         answer_lower = answer.lower()
         excel_keywords = [
             'vlookup', 'hlookup', 'index', 'match', 'pivot', 'pivot table', 
@@ -238,7 +236,7 @@ def evaluate_answer(question: str, answer: str) -> Tuple[int, str]:
         else:
             return 0, "Limited Excel knowledge demonstrated"
     
-    # Parse the response to extract score and explanation
+
     try:
         lines = response.split('\n')
         score = 0
@@ -267,12 +265,12 @@ def evaluate_all_answers(questions_answers: List[Dict]) -> List[Dict]:
     """
     with st.spinner("Evaluating all your answers... This may take a moment."):
         for i, qa in enumerate(questions_answers):
-            # Skip evaluation for questions that were skipped
+      
             if i in st.session_state.skipped_questions:
                 qa['score'] = 0
                 qa['explanation'] = 'Question was skipped'
             elif qa['score'] == 0 and qa['explanation'] == '':
-                # Only evaluate answers that haven't been evaluated yet
+      
                 score, explanation = evaluate_answer(qa['question'], qa['answer'])
                 qa['score'] = score
                 qa['explanation'] = explanation
@@ -283,11 +281,11 @@ def generate_final_report(questions_answers: List[Dict]) -> str:
     """
     Generate a professional feedback report using Google Gemini.
     """
-    # Prepare the Q&A data for the report
+
     qa_summary = ""
     total_score = 0
     
-    # Define correct answers for each question
+
     correct_answers = {
         0: "To calculate the total cost, you would use the SUMPRODUCT function. In cell C7, the formula would be =SUMPRODUCT(A2:A6,B2:B6) which multiplies each item's price by its quantity and then adds all the results together.",
         1: "To create a dynamic chart that updates automatically, you would: 1) Create a named range for your data (Ctrl+T or Insert > Table), 2) Insert a chart based on this table (Insert > Charts > desired chart type), 3) The chart will automatically update when data in the table changes. You can also use OFFSET or INDEX functions with COUNTA to create dynamic ranges.",
@@ -303,10 +301,10 @@ def generate_final_report(questions_answers: List[Dict]) -> str:
         qa_summary += f"Score: {qa['score']}/2\n\n"
         total_score += qa['score']
     
-    # Calculate percentage score
+
     percentage = (total_score / 10) * 100
     
-    # Determine skill level based on score
+
     if percentage >= 90:
         skill_level = "Expert"
     elif percentage >= 75:
@@ -342,13 +340,11 @@ def generate_final_report(questions_answers: List[Dict]) -> str:
     
     response = call_gemini_api(prompt, max_length=500)
     
-    # If API fails, provide basic report
     if response is None or "Error" in response:
-        # Analyze performance patterns
+
         high_scores = [qa for qa in questions_answers if qa['score'] == 2]
         low_scores = [qa for qa in questions_answers if qa['score'] == 0]
         
-        # Generate strengths with more specific analysis
         strengths = []
         if high_scores:
             strengths.append(f"Strong performance on {len(high_scores)} questions with detailed technical knowledge")
@@ -361,7 +357,7 @@ def generate_final_report(questions_answers: List[Dict]) -> str:
         if any('chart' in qa['answer'].lower() or 'dashboard' in qa['answer'].lower() for qa in high_scores):
             strengths.append("Effective data visualization and dashboard creation skills")
         
-        # Generate areas for improvement with more detailed analysis
+ 
         improvements = []
         if low_scores:
             improvements.append(f"Focus on {len(low_scores)} areas where technical knowledge needs strengthening")
@@ -374,7 +370,6 @@ def generate_final_report(questions_answers: List[Dict]) -> str:
         if any('chart' in qa['question'].lower() and qa['score'] < 2 for qa in questions_answers):
             improvements.append("Improve data visualization techniques and interactive dashboard creation")
         
-        # Generate recommendation with skill level and specific resources
         if total_score >= 8:
             recommendation = f"Excellent performance at {skill_level} level! You demonstrate strong Excel skills suitable for advanced roles."
             resources = "- Microsoft's official Power BI and Power Query documentation\n- Advanced Excel courses on LinkedIn Learning or Coursera\n- Excel MVP blogs and forums for cutting-edge techniques"
@@ -508,7 +503,7 @@ def main():
     """Main Streamlit application with structured interview flow."""
     initialize_session_state()
     
-    # Custom CSS for better styling
+
     st.markdown("""
     <style>
     .main-header {
@@ -655,11 +650,11 @@ def main():
     </style>
     """, unsafe_allow_html=True)
     
-    # Header
+   
     st.markdown('<h1 class="main-header">📊 Excel Mock Interview Agent</h1>', unsafe_allow_html=True)
     st.markdown("---")
     
-    # Introduction Section
+
     if not st.session_state.interview_started:
         display_interview_introduction()
         
@@ -669,12 +664,12 @@ def main():
                 st.session_state.interview_started = True
                 st.rerun()
     
-    # Interview Section
+
     elif st.session_state.interview_started and not st.session_state.interview_complete:
-        # Agent thinking process
+   
         display_agent_thinking(st.session_state.current_question + 1)
         
-        # Enhanced progress tracking
+
         progress = (st.session_state.current_question) / 5
         col1, col2 = st.columns([3, 1])
         with col1:
@@ -682,7 +677,7 @@ def main():
         with col2:
             st.markdown(f"<div style='text-align: center; padding: 5px; background-color: #1E1E1E; border-radius: 5px;'><strong>{st.session_state.current_question + 1}/5</strong> Questions</div>", unsafe_allow_html=True)
         
-        # Generate question if needed
+
         if st.session_state.current_question == len(st.session_state.questions_answers):
             with st.spinner("Generating your next question..."):
                 question_number = st.session_state.current_question + 1
@@ -695,10 +690,8 @@ def main():
                     'difficulty_level': question_number
                 })
         
-        # Display current question
         current_qa = st.session_state.questions_answers[st.session_state.current_question]
-        
-        # Get difficulty level info
+  
         difficulty_levels = {
             1: {"level": "Basic", "color": "🟢"},
             2: {"level": "Intermediate-Basic", "color": "🟡"},
@@ -709,7 +702,7 @@ def main():
         
         current_difficulty = difficulty_levels.get(st.session_state.current_question + 1, {"level": "Unknown", "color": "⚪"})
         
-        # Display question without showing difficulty level
+       
         st.markdown(f"""
         <div class="agent-message">
             <h3>Question {st.session_state.current_question + 1}</h3>
